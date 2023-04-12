@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+*.idea
+.git
+*.DS_Store
+*src/data/scrabble_words_complete.pickle
+
