@@ -8,63 +8,70 @@ from constants import LETTERS_BAG
 
 if TYPE_CHECKING:
     from dawg_graph import DAWG
+    from typing import List
 
 
 class Game:
-    def __init__(self, board: "ScrabbleBoard" = None):
+    def __init__(self, board: "ScrabbleBoard" = None, players_number: int = 2, dictionary: "DAWG" = None,
+                 players_strategies: "List[int]" = None):
         self.board = board if board else ScrabbleBoard()
         self.letters_bag = LETTERS_BAG.copy()
-        self.dictionary = self._get_dictionary()
-        self.player_1 = Player()
-        self.player_2 = Player()
-
+        self.dictionary = dictionary if dictionary else self.get_dictionary()
+        self.players = []
+        if players_strategies and len(players_strategies) != players_number:
+            raise f"Players strategies number must be equal to players number." \
+                  f" Given: players strategies: {players_strategies}, players number: {players_number}"
+        if players_strategies:
+            for strategy in players_strategies:
+                self.players.append(Player(strategy=strategy))
+        else:
+            for i in range(players_number):
+                self.players.append(Player())
 
     @staticmethod
-    def _get_dictionary() -> "DAWG":
+    def get_dictionary() -> "DAWG":
         print("opening pickle started")
-        with open("data/scrabble_words_small.pickle", "rb") as openfile:
+        with open("data/scrabble_words_complete.pickle", "rb") as openfile:
             dictionary = pickle.load(openfile)
         print("opening pickle finished")
         return dictionary
 
     def start_game(self):
-        self.player_1.refill_rack(self.letters_bag)
-        self.player_2.refill_rack(self.letters_bag)
+        for player in self.players:
+            player.refill_rack(self.letters_bag)
+        # self.player_1.refill_rack(self.letters_bag)
+        # self.player_2.refill_rack(self.letters_bag)
         move_made = False
         while not move_made:
-            move_made = self.player_1.make_move(
-                self.dictionary,
-                self.board,
-                self.letters_bag,
-                True
-            )
-            if move_made:
-                return self.player_1
-            move_made = self.player_2.make_move(
-                self.dictionary,
-                self.board,
-                self.letters_bag,
-                True
-            )
-            if move_made:
-                return self.player_2
+            for idx, player in enumerate(self.players):
+                move_made = player.make_move(
+                    self.dictionary,
+                    self.board,
+                    self.letters_bag,
+                    True
+                )
+                if move_made:
+                    return idx, player
 
     def play_game(self):
-        first_player: "Player" = self.start_game()
-        second_player: "Player" = self.player_2 if first_player == self.player_1 else self.player_1
+        idx, first_player = self.start_game()
+        first_move = True
         while self.letters_bag:
-            if second_player.rack:
-                second_player.make_move(
+            if first_move:
+                for player in self.players[idx:]:
+                    player.make_move(
                     self.dictionary,
                     self.board,
                     self.letters_bag,
                 )
-            if first_player.rack:
-                first_player.make_move(
+            else:
+                for player in self.players:
+                    player.make_move(
                     self.dictionary,
                     self.board,
                     self.letters_bag,
                 )
+
 
 # Game().play_game()
 #

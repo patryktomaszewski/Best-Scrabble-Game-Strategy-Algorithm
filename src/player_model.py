@@ -9,10 +9,11 @@ if TYPE_CHECKING:
 
 
 class Player:
-    def __init__(self):
+    def __init__(self, strategy: int = 1):
         self.rack: "Optional[List[str]]" = []
         self.score: "int" = 0
         self.moves: "List[Tuple[str, int]]" = []
+        self.strategy = strategy
 
     def refill_rack(self, letters_bag: "List[str]") -> None:
         for i in range(7 - len(self.rack)):
@@ -54,7 +55,7 @@ class Player:
         if not solver.legal_moves:
             self.exchange_rack(letters_bag)
             return False
-        move = solver.get_best_move()
+        move = solver.get_best_move(self.strategy)
         board.place_word(
             move["word"],
             move["start_pos"],

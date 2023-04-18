@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from constants import AVAILABLE_LETTERS
+from constants import AVAILABLE_LETTERS, RARE_LETTER
 
 if TYPE_CHECKING:
     from game_board import ScrabbleBoard
@@ -61,11 +61,42 @@ class SolveState:
             "start_pos": start_pos,
         })
 
-    def get_best_move(self) -> dict:
+    @staticmethod
+    def get_most_pointed_move(legal_moves) -> dict:
+        """
+        returns move which is most pointed
+        """
+        best_move = max(legal_moves, key=lambda x: x['score'])
+        return best_move
+
+    @staticmethod
+    def get_longest_word(legal_moves) -> dict:
+        best_move = max(legal_moves, key=lambda x: len(x['word']))
+        return best_move
+
+    @staticmethod
+    def get_shortest_word(legal_moves) -> dict:
+        best_move = min(legal_moves, key=lambda x: len(x['word']))
+        return best_move
+
+    @staticmethod
+    def get_move_with_most_rare_letters(legal_moves) -> dict:
+        best_move = max(legal_moves, key=lambda x: sum(map(x['word'].count, RARE_LETTER)) )
+        return best_move
+
+    def get_best_move(self, strategy: int) -> dict:
         """
         get best move based on word score
         """
-        best_move = max(self.legal_moves, key=lambda x: x['score'])
+        if strategy == 1:
+            best_move = self.get_most_pointed_move(self.legal_moves)
+        elif strategy == 2:
+            best_move = self.get_longest_word(self.legal_moves)
+        elif strategy == 3:
+            best_move = self.get_shortest_word(self.legal_moves)
+        elif strategy == 4:
+            best_move = self.get_move_with_most_rare_letters(self.legal_moves)
+
         return best_move
 
     def cross_check(self) -> "Dict[Tuple[int, int], List[str]]":

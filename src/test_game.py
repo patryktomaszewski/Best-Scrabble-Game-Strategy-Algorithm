@@ -227,8 +227,8 @@ while running:
             if event.key == pygame.K_SPACE and game_state == "start_screen":
                 game = Game(game_display_manager.board)
                 start = time.time()
-                first_player: "Player" = game.start_game()
-                second_player: "Player" = game.player_2 if first_player == game.player_1 else game.player_1
+                idx, first_player = game.start_game()
+                second_player: "Player" = game.players[1] if idx == 0 else game.players[0]
                 game_display_manager.player_1 = first_player
                 game_display_manager.player_2 = second_player
 
