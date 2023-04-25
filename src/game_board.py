@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from constants import LETTER_SCORES
 from exceptions import WordDoesNotExistError
+from game_settings import settings
 
 if TYPE_CHECKING:
     from typing import Tuple, List, Optional
@@ -13,15 +14,7 @@ class ScrabbleBoard:
         self.size = size
         self.board = [[None] * size for i in range(size)]
         # Set up the bonus squares
-        self.bonus_squares = {
-            (0, 0): "TW", (0, 7): "TW", (0, 14): "TW",
-            (7, 0): "TW", (7, 7): "DW", (7, 14): "TW",
-            (14, 0): "TW", (14, 7): "TW", (14, 14): "TW",
-            (1, 1): "DW", (2, 2): "DL", (3, 3): "TL", (4, 4): "DL",
-            (1, 13): "DW", (2, 12): "DL", (3, 11): "TL", (4, 10): "DL",
-            (13, 1): "DW", (12, 2): "DL", (11, 3): "TL", (10, 4): "DL",
-            (13, 13): "DW", (12, 12): "DL", (11, 11): "TL", (10, 10): "DL"
-        }
+        self.bonus_squares = settings.bonus_squares
         self.letter_scores = LETTER_SCORES
 
     def is_valid_position(self, pos: "Tuple[int, int]"):
@@ -73,11 +66,13 @@ class ScrabbleBoard:
                 return 0
         return score * word_multiplier
 
-    def place_word(self, word: str, pos: "Tuple[int, int]", direction: "str", dictionary: "DAWG") -> None:
+    def place_word(self, word: str, pos: "Tuple[int, int]", direction: "str",
+                    dictionary: "DAWG") -> "Optional[List[str]]":
         # Place a given word on the board at a given position and orientation
         if not dictionary.has_word(word):
             raise WordDoesNotExistError(word)
         x, y = pos
+        used_letters_from_rack = []
         if self.is_valid_position(pos):
             for i, letter in enumerate(word):
                 if direction == "across":
@@ -85,8 +80,11 @@ class ScrabbleBoard:
                 else:
                     pos_x, pos_y = x + i, y
                 if self.is_valid_position((pos_x, pos_y)):
+                    if not self.board[pos_x][pos_y]:
+                        used_letters_from_rack.append(letter)
                     self.board[pos_x][pos_y] = letter
                     # print(f"{pos_x}, {pos_y}")
+        return used_letters_from_rack
 
     def remove_word(self, word, pos, direction: "str"):
         # Remove a given word from the board at a given position and orientation

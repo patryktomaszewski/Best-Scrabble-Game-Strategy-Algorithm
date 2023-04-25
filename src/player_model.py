@@ -21,8 +21,8 @@ class Player:
                 letter = letters_bag.pop(random.randrange(len(letters_bag)))
                 self.rack.append(letter)
 
-    def remove_from_rack_used_letters(self, word: "str"):
-        for letter in word:
+    def remove_from_rack_used_letters(self, used_letters_from_rack: "Optional[List[str]]"):
+        for letter in used_letters_from_rack:
             if letter in self.rack:
                 self.rack.remove(letter)
 
@@ -55,15 +55,15 @@ class Player:
         if not solver.legal_moves:
             self.exchange_rack(letters_bag)
             return False
-        move = solver.get_best_move(self.strategy)
-        board.place_word(
+        move = solver.get_best_move(self.strategy, letters_bag, board)
+        used_letters_from_rack = board.place_word(
             move["word"],
             move["start_pos"],
             move["direction"],
             dictionary,
         )
         self.update_word_score(move)
-        self.remove_from_rack_used_letters(move["word"])
+        self.remove_from_rack_used_letters(used_letters_from_rack)
         self.refill_rack(letters_bag)
         # print(board)
         return True

@@ -4,7 +4,7 @@ import pickle
 from solver import SolveState
 from game_board import ScrabbleBoard
 from player_model import Player
-from constants import LETTERS_BAG
+from game_settings import settings
 
 if TYPE_CHECKING:
     from dawg_graph import DAWG
@@ -15,7 +15,7 @@ class Game:
     def __init__(self, board: "ScrabbleBoard" = None, players_number: int = 2, dictionary: "DAWG" = None,
                  players_strategies: "List[int]" = None):
         self.board = board if board else ScrabbleBoard()
-        self.letters_bag = LETTERS_BAG.copy()
+        self.letters_bag = settings.letters_bag.copy()
         self.dictionary = dictionary if dictionary else self.get_dictionary()
         self.players = []
         if players_strategies and len(players_strategies) != players_number:
@@ -31,7 +31,7 @@ class Game:
     @staticmethod
     def get_dictionary() -> "DAWG":
         print("opening pickle started")
-        with open("data/scrabble_words_complete.pickle", "rb") as openfile:
+        with open("data/scrabble_words_small.pickle", "rb") as openfile:
             dictionary = pickle.load(openfile)
         print("opening pickle finished")
         return dictionary

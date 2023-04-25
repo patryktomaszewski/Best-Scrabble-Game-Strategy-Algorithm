@@ -59,6 +59,7 @@ class SolveState:
             "word": word,
             "direction": self.direction,
             "start_pos": start_pos,
+            "wild_card_idxes": self.wild_card_idxes
         })
 
     @staticmethod
@@ -81,10 +82,83 @@ class SolveState:
 
     @staticmethod
     def get_move_with_most_rare_letters(legal_moves) -> dict:
-        best_move = max(legal_moves, key=lambda x: sum(map(x['word'].count, RARE_LETTER)) )
+        best_move = max(legal_moves, key=lambda x: sum(map(x['word'].count, RARE_LETTER)))
         return best_move
 
-    def get_best_move(self, strategy: int) -> dict:
+    @staticmethod
+    def get_move_with_least_rare_letters(legal_moves) -> dict:
+        best_move = min(legal_moves, key=lambda x: sum(map(x['word'].count, RARE_LETTER)))
+        return best_move
+
+    def get_rid_off_most_letters_at_the_end(self, legal_moves, letters_bag: "List[str]") -> dict:
+        if len(letters_bag) < 10:
+            return self.get_longest_word(legal_moves)
+        else:
+            return self.get_most_pointed_move(legal_moves)
+
+
+    @staticmethod
+    def set_used_letters_from_rack(legal_moves, board: "ScrabbleBoard") -> None:
+        used_letters_from_rack = 0
+        for legal_move in legal_moves:
+            pos_x, pos_y = legal_move["start_pos"]
+            for i, letter in enumerate(legal_move["word"]):
+                if not board.board[pos_x][pos_y]:
+                    used_letters_from_rack += 1
+                if legal_move["direction"] == "across":
+                    pos_x, pos_y = pos_x, pos_y + i
+                else:
+                    pos_x, pos_y = pos_x + i, pos_y
+            legal_move["used_letters_from_rack"] = used_letters_from_rack
+
+    @staticmethod
+    def set_bonus_field_count(legal_moves, board: "ScrabbleBoard") -> None:
+        bonus_fields_count = 0
+        for legal_move in legal_moves:
+            pos_x, pos_y = legal_move["start_pos"]
+            for i, letter in enumerate(legal_move["word"]):
+                if not board.bonus_squares.get((pos_x, pos_y)):
+                    bonus_fields_count += 1
+                if legal_move["direction"] == "across":
+                    pos_x, pos_y = pos_x, pos_y + i
+                else:
+                    pos_x, pos_y = pos_x + i, pos_y
+            legal_move["bonus_fields_count"] = bonus_fields_count
+
+
+
+    @staticmethod
+    def get_move_with_the_most_letters_from_rack(legal_moves) -> dict:
+        best_move = max(legal_moves, key=lambda x: x['used_letters_from_rack'])
+        return best_move
+
+    @staticmethod
+    def get_move_with_least_letters_from_rack(legal_moves) -> dict:
+        best_move = min(legal_moves, key=lambda x: x['used_letters_from_rack'])
+        return best_move
+
+    @staticmethod
+    def get_move_with_most_bonus_fields(legal_moves) -> dict:
+        best_move = max(legal_moves, key=lambda x: x['bonus_fields_count'])
+        return best_move
+
+    @staticmethod
+    def get_move_with_wild_card_strategy(legal_moves) -> dict:
+        """
+        play wild card when store with using it is 25 pt better than second
+        highest without using them
+        """
+        best_move = max(legal_moves, key=lambda x: x['score'])
+        legal_moves_without_wild_card = list(filter(lambda a: len(a["wild_card_idxes"]) == 0, legal_moves))
+        if legal_moves_without_wild_card:
+            without_card = max(legal_moves_without_wild_card, key = lambda x: x['score'])
+            if (best_move["score"] - without_card["score"]) < 25:
+                best_move = without_card
+
+        return best_move
+
+
+    def get_best_move(self, strategy: int, letters_bag: "List[str]", board: "ScrabbleBoard") -> dict:
         """
         get best move based on word score
         """
@@ -96,6 +170,21 @@ class SolveState:
             best_move = self.get_shortest_word(self.legal_moves)
         elif strategy == 4:
             best_move = self.get_move_with_most_rare_letters(self.legal_moves)
+        elif strategy == 5:
+            best_move = self.get_move_with_least_rare_letters(self.legal_moves)
+        elif strategy == 6:
+            best_move = self.get_rid_off_most_letters_at_the_end(self.legal_moves, letters_bag)
+        elif strategy == 7:
+            self.set_used_letters_from_rack(self.legal_moves, board)
+            best_move = self.get_move_with_the_most_letters_from_rack(self.legal_moves)
+        elif strategy == 8:
+            self.set_used_letters_from_rack(self.legal_moves, board)
+            best_move = self.get_move_with_least_letters_from_rack(self.legal_moves)
+        elif strategy == 9:
+            self.set_bonus_field_count(self.legal_moves, board)
+            best_move = self.get_move_with_most_bonus_fields(self.legal_moves)
+        elif strategy == 10:
+            best_move = self.get_move_with_wild_card_strategy(self.legal_moves)
 
         return best_move
 
@@ -210,7 +299,6 @@ class SolveState:
         for direction in ['across', 'down']:
             self.direction = direction
             anchors = self.find_anchors()
-            # print(anchors)
             self.cross_check_results = self.cross_check()
             empty_positions = self.game_board.get_empty_positions()
             for anchor_pos in anchors:

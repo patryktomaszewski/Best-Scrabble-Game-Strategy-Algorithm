@@ -1,19 +1,20 @@
 from typing import TYPE_CHECKING
 from game import Game
 import csv
+import game_settings
+
 
 if TYPE_CHECKING:
     from typing import List
 
 
 class GameStatistics:
-    def __init__(self, games_number: int, players_number: int, players_strategies: "List[int]" = None):
-        self.games_number = games_number
+    def __init__(self):
         self.dictionary = Game.get_dictionary()
-        self.games_number = games_number
-        self.players_number = players_number
+        self.games_number = game_settings.settings.number_of_games
+        self.players_number = self.games_number = game_settings.settings.number_of_players
         self.simulation_scores = []
-        self.players_strategies = players_strategies
+        self.players_strategies = game_settings.settings.players_strategies
         self._games_results = []
     def simulate_single_game(self):
         game = Game(players_number=self.players_number, dictionary=self.dictionary, players_strategies=self.players_strategies)
@@ -30,7 +31,7 @@ class GameStatistics:
 
         header = [f"player_{i+1}_score" for i in range(self.players_number)]
 
-        with open('simulations_scores_rules_1_2_3_4_players.csv', 'w', encoding='UTF8', newline='') as f:
+        with open('statistics/test.csv', 'w', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
 
             # write the header
@@ -39,6 +40,5 @@ class GameStatistics:
             # write multiple rows
             writer.writerows(self.simulation_scores)
 
-
-game_stats = GameStatistics(1000, 4, [1, 2, 3, 4])
+game_stats = GameStatistics()
 game_stats.simulate_games()
