@@ -12,6 +12,8 @@ class ColumnNames(str, Enum):
     FIELDS_VALUES = "fields_values"
     BAG_LETTERS_TO_MODIFY = "bag_letters_to_modify"
     NUMBER_OF_LETTERS_IN_BAG = "number_of_letters_in_bag"
+    USE_GUI = "use_gui"
+    SAVE_GAME_RESULTS = "save_game_results"
 
 
 class GameSettings:
@@ -21,6 +23,8 @@ class GameSettings:
         self.players_strategies = [1 for i in range(self.number_of_players)]
         self.letters_bag = None
         self.bonus_squares = {}
+        self.use_gui = False
+        self.save_game_results = False
         self.parse_config_file()
         self.set_letters_bag()
         self.set_bonus_squares()
@@ -47,7 +51,7 @@ class GameSettings:
                     bonus_squares.pop(pos, None)
                 else:
                     bonus_squares[pos] = modifier
-            self.bonus_squares = bonus_squares
+        self.bonus_squares = bonus_squares
 
     def set_letters_bag(self) -> None:
         letter_bag_mapping = LETTERS_BAG_MAPPING.copy()
@@ -66,12 +70,14 @@ class GameSettings:
                              ColumnNames.FIELDS_VALUES: literal_eval,
                              ColumnNames.BAG_LETTERS_TO_MODIFY: literal_eval,
                              ColumnNames.NUMBER_OF_LETTERS_IN_BAG: literal_eval,
+                             ColumnNames.USE_GUI: literal_eval,
+                             ColumnNames.SAVE_GAME_RESULTS: literal_eval,
                          }
                          )
 
         for col_name in ColumnNames:
             df_value = df[col_name].tolist()[0]
-            if df_value:
-                setattr(self, col_name.value, df_value)
+
+            setattr(self, col_name.value, df_value)
 
 settings = GameSettings()

@@ -41,7 +41,7 @@ class Player:
             board: "ScrabbleBoard",
             letters_bag: "List[str]",
             is_first_move: bool = False
-    ):
+    ) -> dict | bool:
         solver = SolveState(
             dictionary=dictionary,
             board=board,
@@ -66,7 +66,7 @@ class Player:
         self.remove_from_rack_used_letters(used_letters_from_rack)
         self.refill_rack(letters_bag)
         # print(board)
-        return True
+        return move
 
     @staticmethod
     def place_word_on_board(board: "ScrabbleBoard", move: dict, dictionary: "DAWG"):

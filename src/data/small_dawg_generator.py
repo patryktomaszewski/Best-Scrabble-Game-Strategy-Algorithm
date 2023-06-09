@@ -9,6 +9,7 @@ with open("./raw_data_source/slowa.txt") as file:
         if i % 10 == 0:
             words_dawg.add_word(line)
         i += 1
+    words_dawg.compress()
 
 with open("./scrabble_words_small.pickle", "wb") as file_handler:
     pickle.dump(words_dawg, file_handler)

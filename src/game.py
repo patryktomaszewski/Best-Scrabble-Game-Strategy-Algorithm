@@ -11,21 +11,22 @@ if TYPE_CHECKING:
     from typing import List
 
 
-class Game:
-    def __init__(self, board: "ScrabbleBoard" = None, players_number: int = 2, dictionary: "DAWG" = None,
-                 players_strategies: "List[int]" = None):
-        self.board = board if board else ScrabbleBoard()
+class GameManager:
+    def __init__(self, dictionary: "DAWG" = None):
+        self.board = ScrabbleBoard()
+        self.players_number = settings.number_of_players
         self.letters_bag = settings.letters_bag.copy()
         self.dictionary = dictionary if dictionary else self.get_dictionary()
-        self.players = []
-        if players_strategies and len(players_strategies) != players_number:
+        self.players: "List[Player]" = []
+        self.course_of_the_game = []
+        if settings.players_strategies and len(settings.players_strategies) != self.players_number:
             raise f"Players strategies number must be equal to players number." \
-                  f" Given: players strategies: {players_strategies}, players number: {players_number}"
-        if players_strategies:
-            for strategy in players_strategies:
+                  f" Given: players strategies: {settings.players_strategies}, players number: {self.players_number}"
+        if settings.players_strategies:
+            for strategy in settings.players_strategies:
                 self.players.append(Player(strategy=strategy))
         else:
-            for i in range(players_number):
+            for i in range(self.players_number):
                 self.players.append(Player())
 
     @staticmethod
@@ -35,6 +36,10 @@ class Game:
             dictionary = pickle.load(openfile)
         print("opening pickle finished")
         return dictionary
+
+    def update_course_of_the_game_if_move_made(self, move_made: dict | bool, player_id: int) -> None:
+        if move_made:
+            self.course_of_the_game.append((player_id, move_made))
 
     def start_game(self):
         for player in self.players:
@@ -51,64 +56,34 @@ class Game:
                     True
                 )
                 if move_made:
+                    self.update_course_of_the_game_if_move_made(move_made, idx)
                     return idx, player
 
     def play_game(self):
         idx, first_player = self.start_game()
         first_move = True
-        while self.letters_bag:
+        # finish game if each player hasn't played word since 4 rounds
+        no_word_played_iterator = 0
+        while self.letters_bag or (no_word_played_iterator <= 16):
             if first_move:
-                for player in self.players[idx:]:
-                    player.make_move(
-                    self.dictionary,
-                    self.board,
-                    self.letters_bag,
-                )
+                for idx, player in enumerate(self.players[idx:], idx):
+                    move_made = player.make_move(
+                        self.dictionary,
+                        self.board,
+                        self.letters_bag,
+                    )
+                    self.update_course_of_the_game_if_move_made(move_made, idx)
+                first_move = False
             else:
-                for player in self.players:
-                    player.make_move(
-                    self.dictionary,
-                    self.board,
-                    self.letters_bag,
-                )
-
-
-# Game().play_game()
-#
-# board = ScrabbleBoard()
-#
-# player_1 = Player()
-#
-# letters_bag = LETTERS_BAG.copy()
-#
-# player_1.refill_rack(letters_bag)
-#
-# assert len(player_1.rack) == 7
-#
-# assert len(letters_bag) < len(LETTERS_BAG)
-# move_made = False
-# while not move_made:
-#     move_made = player_1.make_move(trie, board, letters_bag, True)
-#     if not move_made:
-#         player_1.exchange_rack(letters_bag)
-#
-# print(board)
-# move_made = False
-# while not move_made:
-#     move_made = player_1.make_move(trie, board, letters_bag)
-#     if not move_made:
-#         player_1.exchange_rack(letters_bag)
-#
-# print(board)
-
-
-
-
-
-
-
-
-
-
-
+                for idx, player in enumerate(self.players):
+                    move_made = player.make_move(
+                        self.dictionary,
+                        self.board,
+                        self.letters_bag,
+                    )
+                    if not move_made:
+                        no_word_played_iterator += 1
+                    else:
+                        no_word_played_iterator = 0
+                    self.update_course_of_the_game_if_move_made(move_made, idx)
 
