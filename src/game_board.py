@@ -37,34 +37,54 @@ class ScrabbleBoard:
         # Return the score of a given letter
         return self.letter_scores.get(letter, 0)
 
-    def get_word_score(self, word, pos, direction: "str", wild_card_idxes: "List[int]"):
+    def get_word_score(self, word, pos, direction: "str", rack: "List[str]"):
         # Compute the score of a given word placed on the board at a given position and orientation
+        empty_positions = self.get_empty_positions()
+        used_letters_count = 0
+        used_letters = []
+        used_letters_with_blanks = []
+        wild_card_idxes = []
         x, y = pos
         score = 0
         word_multiplier = 1
+        fifty_points_bonus = 0
+        was_fifty_points_bonus = False
         for i, letter in enumerate(word):
             if direction == "across":
-                pos_x, pos_y = x + i, y
-            else:
                 pos_x, pos_y = x, y + i
+            else:
+                pos_x, pos_y = x + i, y
+            if self.is_filled((pos_x, pos_y), empty_positions):
+                continue
             if self.is_valid_position((pos_x, pos_y)):
+                used_letters_count += 1
                 letter_multiplier = 1
+                used_letters.append(letter)
+                used_letters_with_blanks.append(letter)
                 if (pos_x, pos_y) in self.bonus_squares:
                     bonus_square = self.bonus_squares[(pos_x, pos_y)]
                     if bonus_square == "DW":
-                        letter_multiplier = 2
+                        word_multiplier *= 2
                     elif bonus_square == "TW":
                         word_multiplier *= 3
                     elif bonus_square == "DL":
                         letter_multiplier = 2
                     elif bonus_square == "TL":
                         letter_multiplier = 3
-                if i in wild_card_idxes:
+                if letter not in rack:
+                    used_letters.remove(letter)
+                    wild_card_idxes.append(i)
                     letter = "%"
+
+                fifty_points_bonus = 0
+                was_fifty_points_bonus = False
+                if used_letters_count == 7:
+                    fifty_points_bonus = 50
+                    was_fifty_points_bonus = True
                 score += self.get_letter_score(letter) * letter_multiplier
             else:
-                return 0
-        return score * word_multiplier
+                return None, None, None, None, None
+        return score * word_multiplier + fifty_points_bonus, was_fifty_points_bonus, wild_card_idxes, used_letters, used_letters_with_blanks
 
     def place_word(self, word: str, pos: "Tuple[int, int]", direction: "str",
                     dictionary: "DAWG") -> "Optional[List[str]]":
@@ -83,7 +103,6 @@ class ScrabbleBoard:
                     if not self.board[pos_x][pos_y]:
                         used_letters_from_rack.append(letter)
                     self.board[pos_x][pos_y] = letter
-                    # print(f"{pos_x}, {pos_y}")
         return used_letters_from_rack
 
     def remove_word(self, word, pos, direction: "str"):

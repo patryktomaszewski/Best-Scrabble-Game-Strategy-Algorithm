@@ -21,10 +21,12 @@ class Player:
                 letter = letters_bag.pop(random.randrange(len(letters_bag)))
                 self.rack.append(letter)
 
-    def remove_from_rack_used_letters(self, used_letters_from_rack: "Optional[List[str]]"):
+    def remove_from_rack_used_letters(self, used_letters_from_rack: "Optional[List[str]]", number_of_used_blanks: int):
         for letter in used_letters_from_rack:
             if letter in self.rack:
                 self.rack.remove(letter)
+        for i in range(number_of_used_blanks):
+            self.rack.remove("%")
 
     def exchange_rack(self, letters_bag: "List[str]"):
         for i in range(len(self.rack)):
@@ -63,9 +65,8 @@ class Player:
             dictionary,
         )
         self.update_word_score(move)
-        self.remove_from_rack_used_letters(used_letters_from_rack)
+        self.remove_from_rack_used_letters(used_letters_from_rack, len(move["wild_card_idxes"]))
         self.refill_rack(letters_bag)
-        # print(board)
         return move
 
     @staticmethod

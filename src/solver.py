@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from constants import AVAILABLE_LETTERS, RARE_LETTER
+from constants import AVAILABLE_LETTERS, RARE_LETTER, VOWELS
 
 if TYPE_CHECKING:
     from game_board import ScrabbleBoard
@@ -12,6 +12,7 @@ class SolveState:
         self.dictionary: "DAWG" = dictionary
         self.game_board: ScrabbleBoard = board
         self.rack: "List[str]" = rack
+        self._not_changeable_rack: "List[str]" = rack.copy()
         self.cross_check_results = None
         self.direction: "Optional[str]" = None
         self.legal_moves: "Optional[List[dict]]" = []
@@ -54,12 +55,21 @@ class SolveState:
             word_idx -= 1
             play_pos = self.before(play_pos)
 
+        score, was_fifty_points_bonus, wild_card_idxes, used_letters, used_letters_with_blanks = self.game_board.get_word_score(
+            word, start_pos, self.direction, self._not_changeable_rack)
+
+        if score is None or was_fifty_points_bonus is None or wild_card_idxes is None:
+            return
         self.legal_moves.append({
-            "score": self.game_board.get_word_score(word, start_pos, self.direction, self.wild_card_idxes),
+            "score": score,
             "word": word,
             "direction": self.direction,
             "start_pos": start_pos,
-            "wild_card_idxes": self.wild_card_idxes
+            "wild_card_idxes": wild_card_idxes,
+            "fifty_score_bonus": was_fifty_points_bonus,
+            "used_letters": used_letters,
+            "used_letters_with_blanks": used_letters_with_blanks,
+            "used_letters_no_repetition": set(used_letters),
         })
 
     @staticmethod
@@ -157,6 +167,125 @@ class SolveState:
 
         return best_move
 
+    def _strategy_with_blanks_for_one_move(self, legal_moves: "List[dict]", move_with_best_score: dict, letters_bag: "List[str]", best_score_move: dict):
+        """
+        - if it is not a word arranged with all the letters from the tray, and two blanks or one blanks were used,
+         but at the same time the other one was not already used on the board,
+          then do not take this word, take the less scored one, which leaves alone the blanks you have,
+        - or, take the one with the blank(s) if the next on the list of highest scoring is more than 25 points weaker,
+        """
+        fifty_score_bonus = move_with_best_score["fifty_score_bonus"]
+        number_of_used_blanks = len(move_with_best_score["wild_card_idxes"])
+        without_best_score = list(filter(lambda a: a["score"] != best_score_move["score"], legal_moves))
+        sorted_by_score = sorted(without_best_score, key=lambda d: d['score'], reverse=True)
+        second_score_move = sorted_by_score[0]
+
+        if (not fifty_score_bonus) and (number_of_used_blanks == 2 or (number_of_used_blanks == 1 and letters_bag.count("%") == 1)):
+            if second_score_move["score"] > 25:
+                best_move = second_score_move
+            else:
+                best_move = best_score_move
+        else:
+            best_move = best_score_move
+        return best_move
+
+    @staticmethod
+    def are_all_letters_vowels(letters: "List[str]") -> bool:
+        vowels_in_letters = list(filter(lambda a: a in VOWELS, letters))
+        if len(vowels_in_letters) == letters:
+            return True
+        return False
+
+    @staticmethod
+    def are_all_letters_consonants(letters: "List[str]") -> bool:
+        consonants_in_letters = list(filter(lambda a: a not in  VOWELS, letters))
+        if len(consonants_in_letters) == letters:
+            return True
+        return False
+
+
+    def get_move_with_no_imbalance(self, legal_moves: "List[dict]"):
+        """
+        if there are only vowels or only consonants left on the rack find a less
+         punctuated word that doesn't do that
+        """
+        sorted_moves = sorted(legal_moves, key=lambda d: d['score'], reverse=True)
+        best_move = legal_moves[-1]
+
+        for move in sorted_moves:
+            left_words_in_rack = self._not_changeable_rack.copy()
+            [left_words_in_rack.remove(letter) for letter in move["used_letters"]]
+            # we do not take blanks in calculations
+            left_words_in_rack = [x for x in left_words_in_rack if x != '%']
+
+            if len(left_words_in_rack) > 2:
+                if self.are_all_letters_vowels(left_words_in_rack):
+                    continue
+                if self.are_all_letters_consonants(left_words_in_rack):
+                    continue
+            best_move = move
+        return best_move
+
+    @staticmethod
+    def get_word_with_highest_points_to_used_letters_ratio(legal_moves) -> dict:
+        """
+
+        Calculate the ratio "number of points / number of letters used"
+        and choose the word with the highest / lowest ratio (the letters
+        used from the board - only from the rack - the idea is to increase
+        the chances of extending words),
+        """
+        best_move = max(legal_moves, key=lambda x: x["score"]/len(x['word']))
+        return best_move
+
+    @staticmethod
+    def get_word_with_lowest_points_to_used_letters_ratio(legal_moves) -> dict:
+        """
+
+        Calculate the ratio "number of points / number of letters used"
+        and choose the word with the highest / lowest ratio (the letters
+        used from the board - only from the rack - the idea is to increase
+        the chances of extending words),
+        """
+        best_move = min(legal_moves, key=lambda x: x["score"] / len(x['word']))
+        return best_move
+
+    @staticmethod
+    def get_word_using_most_double_letters(legal_moves: "List[dict]") -> dict:
+        """
+        Choose a word that gets rid of duplicate letters
+        """
+        best_move = max(legal_moves, key=lambda x: x["used_letters_no_repetition"])
+        return best_move
+
+
+    def complex_strategy_1(self, legal_moves: "List[dict]", letters_bag: "List[str]", strategy: int) -> dict:
+        best_score_move = max(legal_moves, key=lambda x: x['score'])
+        moves_with_best_score = list(filter(lambda a: a["score"] == best_score_move["score"], legal_moves))
+
+        if len(moves_with_best_score) == 1:
+            if strategy == 11:
+                best_move = self._strategy_with_blanks_for_one_move(legal_moves, moves_with_best_score[0], letters_bag, best_score_move)
+            elif strategy == 12:
+                best_move = self.get_move_with_no_imbalance(legal_moves)
+
+        else:
+            if strategy == 11:
+                best_move = self.get_longest_word(moves_with_best_score)
+            elif strategy == 12:
+                best_move = self.get_shortest_word(moves_with_best_score)
+            elif strategy == 13:
+                best_move = self.get_word_with_highest_points_to_used_letters_ratio(moves_with_best_score)
+            elif strategy == 14:
+                best_move = self.get_word_with_lowest_points_to_used_letters_ratio(moves_with_best_score)
+            elif strategy == 15:
+                best_move = self.get_move_with_most_rare_letters(moves_with_best_score)
+            elif strategy == 16:
+                best_move = self.get_move_with_least_rare_letters(moves_with_best_score)
+            elif strategy == 17:
+                best_move = self.get_word_using_most_double_letters(moves_with_best_score)
+
+        return best_move
 
     def get_best_move(self, strategy: int, letters_bag: "List[str]", board: "ScrabbleBoard") -> dict:
         """
@@ -185,6 +314,8 @@ class SolveState:
             best_move = self.get_move_with_most_bonus_fields(self.legal_moves)
         elif strategy == 10:
             best_move = self.get_move_with_wild_card_strategy(self.legal_moves)
+        elif strategy in [11, 12]:
+            best_move = self.complex_strategy_1(self.legal_moves, strategy)
 
         return best_move
 
@@ -246,10 +377,10 @@ class SolveState:
                     self.rack.append(next_letter)
                 elif "%" in self.rack:
                     self.rack.remove("%")
-                    expanded__word = partial_word + next_letter
-                    self.wild_card_idxes.append(len(expanded__word) - 1)
+                    expanded_word = partial_word + next_letter
+                    self.wild_card_idxes.append(len(expanded_word) - 1)
                     self.before_part(
-                        expanded__word,
+                        expanded_word,
                         current_node.edges[next_letter],
                         anchor_pos,
                         limit - 1
@@ -338,13 +469,3 @@ class SolveState:
                 limit = limit + 1
                 scan_pos = self.before(scan_pos)
             self.before_part("", self.dictionary.root, anchor_pos, limit)
-        a = 2
-        #     self.direction = direction
-        #     self.cross_check_results = self.cross_check()
-        #     self.before_part("", self.dictionary.root, (7,7), 8)
-        # for letter in self.rack:
-        #     self.game_board.board[7][8] = letter
-        #     self.rack.remove(letter)
-        #     self.find_all_options()
-        #     self.rack.append(letter)
-        #     self.game_board.board[7][8] = None

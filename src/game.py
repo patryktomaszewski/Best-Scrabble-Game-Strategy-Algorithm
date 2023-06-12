@@ -28,6 +28,7 @@ class GameManager:
         else:
             for i in range(self.players_number):
                 self.players.append(Player())
+        self.played_wilds_cards: int = 0
 
     @staticmethod
     def get_dictionary() -> "DAWG":
