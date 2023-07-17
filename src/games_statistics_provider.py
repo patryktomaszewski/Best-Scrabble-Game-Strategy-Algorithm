@@ -32,7 +32,7 @@ class GameStatisticsManager:
         for i in range(settings.number_of_players):
             players_words_scores_header.append(f"player_{i + 1}_words")
 
-        with open('statistics/players_scores_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
+        with open('src/statistics/players_scores_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
 
             # write the header
@@ -42,7 +42,7 @@ class GameStatisticsManager:
             writer.writerows(self.simulation_scores)
 
         players_words_scores_header = ["played_word", "word_score"]
-        with open('statistics/words_scores_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
+        with open('src/statistics/words_scores_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
 
             # write the header
@@ -52,7 +52,7 @@ class GameStatisticsManager:
             writer.writerows(self.simulation_words_scores)
 
         course_of_the_game_header = ["game_number", "player", "start_pos", "direction", "word", "score"]
-        with open('statistics/course_of_the_game_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
+        with open('src/statistics/course_of_the_game_1_6_10_11.csv', 'w', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
 
             # write the header

@@ -63,7 +63,7 @@ class GameSettings:
         self.letters_bag = [letter for letter, letter_count in letter_bag_mapping.items() for _ in range(letter_count)]
 
     def parse_config_file(self) -> None:
-        df = pd.read_csv('config_file/game_config.csv',
+        df = pd.read_csv('src/config_file/game_config.csv',
                          converters={
                              ColumnNames.PLAYERS_STRATEGIES: literal_eval,
                              ColumnNames.FIELDS_TO_CHANGE: literal_eval,
