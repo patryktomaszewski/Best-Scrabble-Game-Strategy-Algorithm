@@ -100,26 +100,21 @@ class SolveState:
         best_move = min(legal_moves, key=lambda x: sum(map(x['word'].count, RARE_LETTER)))
         return best_move
 
+    @staticmethod
+    def get_word_with_most_used_letters_from_rack(legal_moves) -> dict:
+        best_move = max(legal_moves, key=lambda x: len(x['used_letters_with_blanks']))
+        return best_move
+
     def get_rid_off_most_letters_at_the_end(self, legal_moves, letters_bag: "List[str]") -> dict:
         if len(letters_bag) < 10:
-            return self.get_longest_word(legal_moves)
+            return self.get_word_with_most_used_letters_from_rack(legal_moves)
         else:
             return self.get_most_pointed_move(legal_moves)
 
-
     @staticmethod
-    def set_used_letters_from_rack(legal_moves, board: "ScrabbleBoard") -> None:
-        used_letters_from_rack = 0
-        for legal_move in legal_moves:
-            pos_x, pos_y = legal_move["start_pos"]
-            for i, letter in enumerate(legal_move["word"]):
-                if not board.board[pos_x][pos_y]:
-                    used_letters_from_rack += 1
-                if legal_move["direction"] == "across":
-                    pos_x, pos_y = pos_x, pos_y + i
-                else:
-                    pos_x, pos_y = pos_x + i, pos_y
-            legal_move["used_letters_from_rack"] = used_letters_from_rack
+    def get_move_with_least_used_letters_from_rack(legal_moves) -> dict:
+        best_move = min(legal_moves, key=lambda x: x['used_letters_with_blanks'])
+        return best_move
 
     @staticmethod
     def set_bonus_field_count(legal_moves, board: "ScrabbleBoard") -> None:
@@ -135,39 +130,30 @@ class SolveState:
                     pos_x, pos_y = pos_x + i, pos_y
             legal_move["bonus_fields_count"] = bonus_fields_count
 
-
-
-    @staticmethod
-    def get_move_with_the_most_letters_from_rack(legal_moves) -> dict:
-        best_move = max(legal_moves, key=lambda x: x['used_letters_from_rack'])
-        return best_move
-
-    @staticmethod
-    def get_move_with_least_letters_from_rack(legal_moves) -> dict:
-        best_move = min(legal_moves, key=lambda x: x['used_letters_from_rack'])
-        return best_move
-
-    @staticmethod
-    def get_move_with_most_bonus_fields(legal_moves) -> dict:
+    def get_move_with_most_bonus_fields(self, legal_moves) -> dict:
         best_move = max(legal_moves, key=lambda x: x['bonus_fields_count'])
+        if best_move['bonus_fields_count'] == 0:
+            best_move = self.get_most_pointed_move(legal_moves)
         return best_move
 
     @staticmethod
     def get_move_with_wild_card_strategy(legal_moves) -> dict:
         """
-        play wild card when store with using it is 25 pt better than second
+        play wild card when store with using it is 10 pt better than second
         highest without using them
         """
         best_move = max(legal_moves, key=lambda x: x['score'])
         legal_moves_without_wild_card = list(filter(lambda a: len(a["wild_card_idxes"]) == 0, legal_moves))
         if legal_moves_without_wild_card:
-            without_card = max(legal_moves_without_wild_card, key = lambda x: x['score'])
-            if (best_move["score"] - without_card["score"]) < 25:
+            without_card = max(legal_moves_without_wild_card, key=lambda x: x['score'])
+            if (best_move["score"] - without_card["score"]) < 10:
                 best_move = without_card
 
         return best_move
 
-    def _strategy_with_blanks_for_one_move(self, legal_moves: "List[dict]", move_with_best_score: dict, letters_bag: "List[str]", best_score_move: dict):
+    @staticmethod
+    def strategy_with_blanks_for_one_move(legal_moves: "List[dict]", move_with_best_score: dict,
+                                          letters_bag: "List[str]", best_score_move: dict):
         """
         - if it is not a word arranged with all the letters from the tray, and two blanks or one blanks were used,
          but at the same time the other one was not already used on the board,
@@ -177,10 +163,13 @@ class SolveState:
         fifty_score_bonus = move_with_best_score["fifty_score_bonus"]
         number_of_used_blanks = len(move_with_best_score["wild_card_idxes"])
         without_best_score = list(filter(lambda a: a["score"] != best_score_move["score"], legal_moves))
+        if not without_best_score:
+            return best_score_move
         sorted_by_score = sorted(without_best_score, key=lambda d: d['score'], reverse=True)
         second_score_move = sorted_by_score[0]
 
-        if (not fifty_score_bonus) and (number_of_used_blanks == 2 or (number_of_used_blanks == 1 and letters_bag.count("%") == 1)):
+        if (not fifty_score_bonus) and (
+                number_of_used_blanks == 2 or (number_of_used_blanks == 1 and letters_bag.count("%") == 1)):
             if second_score_move["score"] > 25:
                 best_move = second_score_move
             else:
@@ -214,7 +203,7 @@ class SolveState:
 
         for move in sorted_moves:
             left_words_in_rack = self._not_changeable_rack.copy()
-            [left_words_in_rack.remove(letter) for letter in move["used_letters"]]
+            [left_words_in_rack.remove(letter) for letter in move["used_letters"] if letter in left_words_in_rack]
             # we do not take blanks in calculations
             left_words_in_rack = [x for x in left_words_in_rack if x != '%']
 
@@ -224,6 +213,7 @@ class SolveState:
                 if self.are_all_letters_consonants(left_words_in_rack):
                     continue
             best_move = move
+            break
         return best_move
 
     @staticmethod
@@ -250,41 +240,13 @@ class SolveState:
         best_move = min(legal_moves, key=lambda x: x["score"] / len(x['word']))
         return best_move
 
-    @staticmethod
-    def get_word_using_most_double_letters(legal_moves: "List[dict]") -> dict:
+    def get_word_using_most_double_letters(self, legal_moves: "List[dict]") -> dict:
         """
         Choose a word that gets rid of duplicate letters
         """
-        best_move = max(legal_moves, key=lambda x: x["used_letters_no_repetition"])
-        return best_move
-
-
-    def complex_strategy_1(self, legal_moves: "List[dict]", letters_bag: "List[str]", strategy: int) -> dict:
-        best_score_move = max(legal_moves, key=lambda x: x['score'])
-        moves_with_best_score = list(filter(lambda a: a["score"] == best_score_move["score"], legal_moves))
-
-        if len(moves_with_best_score) == 1:
-            if strategy == 11:
-                best_move = self._strategy_with_blanks_for_one_move(legal_moves, moves_with_best_score[0], letters_bag, best_score_move)
-            elif strategy == 12:
-                best_move = self.get_move_with_no_imbalance(legal_moves)
-
-        else:
-            if strategy == 11:
-                best_move = self.get_longest_word(moves_with_best_score)
-            elif strategy == 12:
-                best_move = self.get_shortest_word(moves_with_best_score)
-            elif strategy == 13:
-                best_move = self.get_word_with_highest_points_to_used_letters_ratio(moves_with_best_score)
-            elif strategy == 14:
-                best_move = self.get_word_with_lowest_points_to_used_letters_ratio(moves_with_best_score)
-            elif strategy == 15:
-                best_move = self.get_move_with_most_rare_letters(moves_with_best_score)
-            elif strategy == 16:
-                best_move = self.get_move_with_least_rare_letters(moves_with_best_score)
-            elif strategy == 17:
-                best_move = self.get_word_using_most_double_letters(moves_with_best_score)
-
+        best_move = max(legal_moves, key=lambda x: len(x["used_letters"]) - len(x["used_letters_no_repetition"]))
+        if len(best_move["used_letters"]) - len(best_move["used_letters_no_repetition"]) == 0:
+            best_move = self.get_most_pointed_move(legal_moves)
         return best_move
 
     def get_best_move(self, strategy: int, letters_bag: "List[str]", board: "ScrabbleBoard") -> dict:
@@ -304,18 +266,36 @@ class SolveState:
         elif strategy == 6:
             best_move = self.get_rid_off_most_letters_at_the_end(self.legal_moves, letters_bag)
         elif strategy == 7:
-            self.set_used_letters_from_rack(self.legal_moves, board)
-            best_move = self.get_move_with_the_most_letters_from_rack(self.legal_moves)
+            best_move = self.get_word_with_most_used_letters_from_rack(self.legal_moves)
         elif strategy == 8:
-            self.set_used_letters_from_rack(self.legal_moves, board)
-            best_move = self.get_move_with_least_letters_from_rack(self.legal_moves)
+            best_move = self.get_move_with_least_used_letters_from_rack(self.legal_moves)
         elif strategy == 9:
             self.set_bonus_field_count(self.legal_moves, board)
             best_move = self.get_move_with_most_bonus_fields(self.legal_moves)
         elif strategy == 10:
             best_move = self.get_move_with_wild_card_strategy(self.legal_moves)
-        elif strategy in [11, 12]:
-            best_move = self.complex_strategy_1(self.legal_moves, strategy)
+        else:
+            best_score_move = max(self.legal_moves, key=lambda x: x['score'])
+            moves_with_best_score = list(filter(lambda a: a["score"] == best_score_move["score"], self.legal_moves))
+            if strategy == 11:
+                best_move = self.strategy_with_blanks_for_one_move(self.legal_moves, moves_with_best_score[0],
+                                                                    letters_bag, best_score_move)
+            elif strategy == 12:
+                best_move = self.get_move_with_no_imbalance(self.legal_moves)
+            elif strategy == 13:
+                best_move = self.get_longest_word(moves_with_best_score)
+            elif strategy == 14:
+                best_move = self.get_shortest_word(moves_with_best_score)
+            elif strategy == 15:
+                best_move = self.get_word_with_highest_points_to_used_letters_ratio(moves_with_best_score)
+            elif strategy == 16:
+                best_move = self.get_word_with_lowest_points_to_used_letters_ratio(moves_with_best_score)
+            elif strategy == 17:
+                best_move = self.get_move_with_most_rare_letters(moves_with_best_score)
+            elif strategy == 18:
+                best_move = self.get_move_with_least_rare_letters(moves_with_best_score)
+            elif strategy == 19:
+                best_move = self.get_word_using_most_double_letters(moves_with_best_score)
 
         return best_move
 
@@ -452,7 +432,8 @@ class SolveState:
                 else:
                     limit = 0
                     scan_pos = anchor_pos
-                    while self.game_board.is_empty(self.before(scan_pos), empty_positions) and self.before(scan_pos) not in anchors:
+                    while self.game_board.is_empty(self.before(scan_pos), empty_positions) and self.before(
+                            scan_pos) not in anchors:
                         limit = limit + 1
                         scan_pos = self.before(scan_pos)
                     self.before_part("", self.dictionary.root, anchor_pos, limit)

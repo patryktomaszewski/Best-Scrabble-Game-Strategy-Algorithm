@@ -1,19 +1,18 @@
 from typing import TYPE_CHECKING
 import pygame
-from game import GameManager
+from game_manager import GameManager
 import time
 from game_settings import settings
 
-from game_board import ScrabbleBoard
 if TYPE_CHECKING:
-    from player_model import Player
     from typing import Optional
+    from dawg_graph import DAWG
 
 
 class GameDisplayManager(GameManager):
 
-    def __init__(self, screen_width: "Optional[int]" = 1400, screen_height: "Optional[int]" = 800):
-        super().__init__()
+    def __init__(self, dictionary: "DAWG" = None, screen_width: "Optional[int]" = 1400, screen_height: "Optional[int]" = 800):
+        super().__init__(dictionary=dictionary)
         pygame.init()
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -146,7 +145,6 @@ class GameDisplayManager(GameManager):
         y_start = 25
         pygame.draw.rect(self.screen, (210, 180, 140), [x_start, y_start, 650, 680])
         for i, player in enumerate(self.players):
-            # pygame.draw.rect(self.screen, (210, 180, 140), [x_start, 25, 450, 50])
             score_title = self.score_font.render(f"Player {i + 1} score", True, (0, 0, 0))
             self.screen.blit(score_title, (x_start + 20 + (450//4 + 40) * i, y_start + 25))
 
@@ -177,9 +175,8 @@ class GameDisplayManager(GameManager):
                     running = False
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE and game_state == "start_screen":
-                        start = time.time()
                         idx, first_player = self.start_game()
-                        for player in enumerate(self.players[idx:], idx):
+                        for idx, player in enumerate(self.players[idx:], idx):
                             move_made = player.make_move(
                                 self.dictionary,
                                 self.board,

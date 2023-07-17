@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class GameManager:
-    def __init__(self, dictionary: "DAWG" = None):
+    def __init__(self, dictionary: "DAWG" = None, players_strategies: "List[int] | None" = None):
         self.board = ScrabbleBoard()
         self.players_number = settings.number_of_players
         self.letters_bag = settings.letters_bag.copy()
@@ -23,7 +23,8 @@ class GameManager:
             raise f"Players strategies number must be equal to players number." \
                   f" Given: players strategies: {settings.players_strategies}, players number: {self.players_number}"
         if settings.players_strategies:
-            for strategy in settings.players_strategies:
+            strategies = players_strategies if players_strategies else settings.players_strategies
+            for strategy in strategies:
                 self.players.append(Player(strategy=strategy))
         else:
             for i in range(self.players_number):
@@ -45,8 +46,6 @@ class GameManager:
     def start_game(self):
         for player in self.players:
             player.refill_rack(self.letters_bag)
-        # self.player_1.refill_rack(self.letters_bag)
-        # self.player_2.refill_rack(self.letters_bag)
         move_made = False
         while not move_made:
             for idx, player in enumerate(self.players):

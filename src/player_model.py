@@ -68,9 +68,3 @@ class Player:
         self.remove_from_rack_used_letters(used_letters_from_rack, len(move["wild_card_idxes"]))
         self.refill_rack(letters_bag)
         return move
-
-    @staticmethod
-    def place_word_on_board(board: "ScrabbleBoard", move: dict, dictionary: "DAWG"):
-        if not dictionary.has_word(move["word"]):
-            raise
-
