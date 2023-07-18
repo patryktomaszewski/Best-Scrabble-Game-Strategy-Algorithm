@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 import random
 import pickle
+
+from data.dawg_generator import generate_dawg_data_set
 from solver import SolveState
 from game_board import ScrabbleBoard
 from player_model import Player
@@ -34,8 +36,15 @@ class GameManager:
     @staticmethod
     def get_dictionary() -> "DAWG":
         print("opening pickle started")
-        with open("data/scrabble_words_small.pickle", "rb") as openfile:
-            dictionary = pickle.load(openfile)
+        try:
+            with open("data/scrabble_words_small.pickle", "rb") as openfile:
+                dictionary = pickle.load(openfile)
+        except FileNotFoundError:
+            print("data set is not created")
+            generate_dawg_data_set()
+            print("opening pickle started")
+            with open("data/scrabble_words_small.pickle", "rb") as openfile:
+                dictionary = pickle.load(openfile)
         print("opening pickle finished")
         return dictionary
 
