@@ -37,13 +37,13 @@ class GameManager:
     def get_dictionary() -> "DAWG":
         print("opening pickle started")
         try:
-            with open("data/scrabble_words_small.pickle", "rb") as openfile:
+            with open("src/data/scrabble_words_complete.pickle", "rb") as openfile:
                 dictionary = pickle.load(openfile)
         except FileNotFoundError:
             print("data set is not created")
             generate_dawg_data_set()
             print("opening pickle started")
-            with open("data/scrabble_words_small.pickle", "rb") as openfile:
+            with open("src/data/scrabble_words_complete.pickle", "rb") as openfile:
                 dictionary = pickle.load(openfile)
         print("opening pickle finished")
         return dictionary
